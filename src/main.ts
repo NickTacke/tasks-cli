@@ -1,4 +1,4 @@
-import { saveTasks, loadTasks } from "./storage";
+import { saveTasks, loadTasks, type Task } from "./storage";
 
 const help = `
 Usage: task-cli <command> [arguments]
@@ -13,6 +13,22 @@ Commands:
   help                             Show this help message
 `;
 
+const parseId = (raw: string | undefined): number | null => {
+  if (!raw || !/^\d+$/.test(raw)) return null;
+  return parseInt(raw, 10);
+};
+
+const formatList = (tasks: Task[]): string => {
+  if (tasks.length === 0) return "No tasks.";
+  const idWidth = Math.max(2, ...tasks.map((t) => String(t.id).length));
+  return tasks
+    .map(
+      (t) =>
+        `[${String(t.id).padStart(idWidth)}]  ${t.status.padEnd(11)}  ${t.description}`,
+    )
+    .join("\n");
+};
+
 async function main(): Promise<number> {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === "help") {
@@ -25,140 +41,121 @@ async function main(): Promise<number> {
 
   switch (command) {
     case "add": {
+      const description = rest.join(" ").trim();
+      if (!description) {
+        console.log("Usage: add <description>");
+        return 1;
+      }
+
       const id =
         (tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) : 0) + 1;
 
       tasks.push({
-        // Get highest id number & increment by 1
-        id: id,
-        description: rest.join(" "),
+        id,
+        description,
         status: "todo",
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
       console.log(`Task added successfully (ID: ${id})`);
-
       break;
     }
     case "update": {
-      if (rest.length === 0) {
+      const id = parseId(rest[0]);
+      const description = rest.slice(1).join(" ").trim();
+      if (id === null || !description) {
         console.log("Usage: update <id> <description>");
-        return 0;
+        return 1;
       }
 
-      const [id, ...description] = rest;
-
-      const taskExists = tasks.some((task) => task.id === parseInt(id!));
-      if (!taskExists) {
+      if (!tasks.some((t) => t.id === id)) {
         console.log("Task not found");
-        return 0;
+        return 1;
       }
 
-      tasks = tasks.map((task) =>
-        task.id === parseInt(id!)
-          ? {
-              ...task,
-              description: description.join(" "),
-              updatedAt: new Date(),
-            }
-          : task,
+      tasks = tasks.map((t) =>
+        t.id === id ? { ...t, description, updatedAt: new Date() } : t,
       );
 
       console.log("Task updated successfully");
-
       break;
     }
     case "delete": {
-      if (rest.length === 0) {
+      const id = parseId(rest[0]);
+      if (id === null) {
         console.log("Usage: delete <id>");
-        return 0;
+        return 1;
       }
 
-      const [idToDelete] = rest;
-
-      const taskExists = tasks.some(
-        (task) => task.id === parseInt(idToDelete!),
-      );
-      if (!taskExists) {
+      if (!tasks.some((t) => t.id === id)) {
         console.log("Task not found");
-        return 0;
+        return 1;
       }
 
-      tasks = tasks.filter((task) => task.id !== parseInt(idToDelete!));
+      tasks = tasks.filter((t) => t.id !== id);
       console.log("Task deleted successfully");
-
       break;
     }
     case "mark-in-progress": {
-      if (rest.length === 0) {
+      const id = parseId(rest[0]);
+      if (id === null) {
         console.log("Usage: mark-in-progress <id>");
-        return 0;
+        return 1;
       }
 
-      const [idToMarkInProgress] = rest;
-      const taskExists = tasks.some(
-        (task) => task.id === parseInt(idToMarkInProgress!),
-      );
-      if (!taskExists) {
+      if (!tasks.some((t) => t.id === id)) {
         console.log("Task not found");
-        return 0;
+        return 1;
       }
 
-      tasks = tasks.map((task) =>
-        task.id === parseInt(idToMarkInProgress!)
-          ? {
-              ...task,
-              status: "in-progress",
-              updatedAt: new Date(),
-            }
-          : task,
+      tasks = tasks.map((t) =>
+        t.id === id
+          ? { ...t, status: "in-progress", updatedAt: new Date() }
+          : t,
       );
 
       console.log("Task marked as in-progress");
-
       break;
     }
     case "mark-done": {
-      if (rest.length === 0) {
+      const id = parseId(rest[0]);
+      if (id === null) {
         console.log("Usage: mark-done <id>");
-        return 0;
+        return 1;
       }
 
-      const [idToMarkDone] = rest;
-
-      const taskExists = tasks.some(
-        (task) => task.id === parseInt(idToMarkDone!),
-      );
-      if (!taskExists) {
+      if (!tasks.some((t) => t.id === id)) {
         console.log("Task not found");
-        return 0;
+        return 1;
       }
 
-      tasks = tasks.map((task) =>
-        task.id === parseInt(idToMarkDone!)
-          ? {
-              ...task,
-              status: "done",
-              updatedAt: new Date(),
-            }
-          : task,
+      tasks = tasks.map((t) =>
+        t.id === id ? { ...t, status: "done", updatedAt: new Date() } : t,
       );
-      console.log("Task marked as done");
 
+      console.log("Task marked as done");
       break;
     }
     case "list": {
-      const [status] = rest;
-      const filteredTasks = status
-        ? tasks.filter((task) => task.status === status)
+      const status = rest[0];
+      const validStatuses = ["todo", "in-progress", "done"];
+      if (status && !validStatuses.includes(status)) {
+        console.log(
+          `Invalid status: ${status} (expected todo, in-progress, done)`,
+        );
+        return 1;
+      }
+
+      const filtered = status
+        ? tasks.filter((t) => t.status === status)
         : tasks;
-      console.log(filteredTasks);
+      console.log(formatList(filtered));
       break;
     }
     default:
-      console.log(help);
-      return 0;
+      console.log(`Unknown command: ${command}\n${help}`);
+      return 1;
   }
 
   await saveTasks(tasks);
