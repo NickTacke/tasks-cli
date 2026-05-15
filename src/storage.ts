@@ -3,7 +3,7 @@ import { randomUUIDv7 } from "bun";
 const FILE_PATH = "tasks.json";
 
 type Task = {
-  id: string;
+  id: number;
   description: string;
   status: "todo" | "in-progress" | "done";
   createdAt: Date;

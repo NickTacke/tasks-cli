@@ -26,7 +26,8 @@ async function main(): Promise<number> {
   switch (command) {
     case "add":
       tasks.push({
-        id: crypto.randomUUID(),
+        // Get highest id number & increment by 1
+        id: (tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) : 0) + 1,
         description: rest.join(" "),
         status: "todo",
         createdAt: new Date(),
@@ -34,6 +35,20 @@ async function main(): Promise<number> {
       });
       break;
     case "update":
+      if (rest.length === 0) {
+        console.log("Usage: update <id> <description>");
+        return 0;
+      }
+      const [id, ...description] = rest;
+      tasks = tasks.map((task) =>
+        task.id === parseInt(id!)
+          ? {
+              ...task,
+              description: description.join(" "),
+              updatedAt: new Date(),
+            }
+          : task,
+      );
       break;
     case "delete":
       break;
