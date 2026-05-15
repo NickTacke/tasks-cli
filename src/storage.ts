@@ -1,4 +1,9 @@
-const FILE_PATH = "tasks.json";
+import { homedir } from "node:os";
+import { join, dirname } from "node:path";
+import { mkdir } from "node:fs/promises";
+
+const FILE_PATH =
+  process.env["TASKS_CLI_FILE"] ?? join(homedir(), ".tasks-cli", "tasks.json");
 
 export type Task = {
   id: number;
@@ -26,6 +31,7 @@ const loadTasks = async (): Promise<Task[]> => {
 };
 
 const saveTasks = async (tasks: Task[]): Promise<void> => {
+  await mkdir(dirname(FILE_PATH), { recursive: true });
   await Bun.file(FILE_PATH).write(JSON.stringify(tasks, null, 2));
 };
 
