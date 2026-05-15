@@ -1,5 +1,3 @@
-import { randomUUIDv7 } from "bun";
-
 const FILE_PATH = "tasks.json";
 
 type Task = {
