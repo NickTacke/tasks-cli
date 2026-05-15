@@ -1,7 +1,8 @@
+#!/usr/bin/env bun
 import { saveTasks, loadTasks, type Task } from "./storage";
 
 const help = `
-Usage: task-cli <command> [arguments]
+Usage: tasks-cli <command> [arguments]
 
 Commands:
   add <description>                Add a new task
